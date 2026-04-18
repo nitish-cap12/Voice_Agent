@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sarvam AI Voice Bot</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── API Key Banner ── */
+    #api-key-banner {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: #ff6b35;
+      color: #fff;
+      padding: 10px 20px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+    #api-key-banner input {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      width: 320px;
+      outline: none;
+    }
+    #api-key-banner button {
+      padding: 6px 14px;
+      background: #fff;
+      color: #ff6b35;
+      border: none;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    #api-key-banner button:hover { background: #ffe0d4; }
+
+    /* ── Main Dialog ── */
+    .dialog-wrapper {
+      margin-top: 52px;
+      width: 100%;
+      max-width: 480px;
+      padding: 16px;
+    }
+
+    .dialog-box {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Header */
+    .dialog-header {
+      background: linear-gradient(135deg, #e94560, #0f3460);
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .bot-avatar {
+      width: 48px; height: 48px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .bot-info h2 { color: #fff; font-size: 18px; font-weight: 700; }
+    .bot-info p  { color: rgba(255,255,255,0.7); font-size: 12px; margin-top: 2px; }
+    .status-dot {
+      width: 10px; height: 10px;
+      background: #4ade80;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    /* Language selector */
+    .lang-bar {
+      background: rgba(0,0,0,0.2);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .lang-bar label { color: rgba(255,255,255,0.6); font-size: 12px; }
+    .lang-bar select {
+      flex: 1;
+      padding: 5px 10px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+    }
+    .lang-bar select option { background: #1a1a2e; color: #fff; }
+
+    /* Messages */
+    .messages {
+      height: 340px;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      scroll-behavior: smooth;
+    }
+    .messages::-webkit-scrollbar { width: 4px; }
+    .messages::-webkit-scrollbar-track { background: transparent; }
+    .messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+
+    .message {
+      max-width: 80%;
+      padding: 12px 16px;
+      border-radius: 18px;
+      font-size: 14px;
+      line-height: 1.5;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    .message.bot {
+      align-self: flex-start;
+      background: rgba(255,255,255,0.1);
+      color: #e2e8f0;
+      border-bottom-left-radius: 4px;
+    }
+    .message.user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, #e94560, #c62a47);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .message .speaker {
+      font-size: 11px;
+      font-weight: 700;
+      opacity: 0.7;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Typing indicator */
+    .typing-indicator {
+      align-self: flex-start;
+      background: rgba(255,255,255,0.1);
+      border-radius: 18px;
+      border-bottom-left-radius: 4px;
+      padding: 14px 18px;
+      display: none;
+    }
+    .typing-indicator.visible { display: flex; gap: 6px; align-items: center; }
+    .typing-indicator span {
+      width: 8px; height: 8px;
+      background: rgba(255,255,255,0.5);
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 60%, 100% { transform: translateY(0); }
+      30%           { transform: translateY(-8px); }
+    }
+
+    /* Waveform */
+    .waveform {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      height: 36px;
+      padding: 0 20px;
+    }
+    .waveform.active { display: flex; }
+    .waveform .bar {
+      width: 4px;
+      background: #e94560;
+      border-radius: 2px;
+      animation: wave 0.8s ease-in-out infinite;
+    }
+    .waveform .bar:nth-child(1) { animation-delay: 0s;    height: 16px; }
+    .waveform .bar:nth-child(2) { animation-delay: 0.1s;  height: 28px; }
+    .waveform .bar:nth-child(3) { animation-delay: 0.2s;  height: 20px; }
+    .waveform .bar:nth-child(4) { animation-delay: 0.3s;  height: 34px; }
+    .waveform .bar:nth-child(5) { animation-delay: 0.4s;  height: 22px; }
+    .waveform .bar:nth-child(6) { animation-delay: 0.3s;  height: 30px; }
+    .waveform .bar:nth-child(7) { animation-delay: 0.2s;  height: 18px; }
+    .waveform .bar:nth-child(8) { animation-delay: 0.1s;  height: 26px; }
+    @keyframes wave {
+      0%, 100% { transform: scaleY(1); }
+      50%       { transform: scaleY(0.4); }
+    }
+
+    /* Status text */
+    .status-text {
+      text-align: center;
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      padding: 0 20px 6px;
+      min-height: 20px;
+    }
+
+    /* Controls */
+    .controls {
+      padding: 16px 24px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .mic-btn {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(135deg, #e94560, #c62a47);
+      color: #fff;
+      font-size: 28px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 24px rgba(233, 69, 96, 0.4);
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .mic-btn:hover  { transform: scale(1.08); box-shadow: 0 12px 32px rgba(233,69,96,0.55); }
+    .mic-btn:active { transform: scale(0.95); }
+    .mic-btn.recording {
+      background: linear-gradient(135deg, #4ade80, #16a34a);
+      box-shadow: 0 8px 24px rgba(74, 222, 128, 0.5);
+      animation: recordPulse 1.5s infinite;
+    }
+    .mic-btn.processing {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);
+      cursor: not-allowed;
+    }
+    @keyframes recordPulse {
+      0%, 100% { box-shadow: 0 8px 24px rgba(74,222,128,0.5); }
+      50%       { box-shadow: 0 8px 40px rgba(74,222,128,0.8), 0 0 0 12px rgba(74,222,128,0.1); }
+    }
+
+    .mic-label {
+      color: rgba(255,255,255,0.6);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .clear-btn {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.5);
+      padding: 7px 18px;
+      border-radius: 20px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .clear-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+    /* Error toast */
+    #toast {
+      position: fixed;
+      bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #ef4444;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+      max-width: 90vw;
+      text-align: center;
+    }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<!-- API Key Banner -->
+<div id="api-key-banner">
+  <span>🔑 Enter your Sarvam AI API Key:</span>
+  <input type="password" id="api-key-input" placeholder="Paste API key here…" />
+  <button onclick="saveApiKey()">Save</button>
+</div>
+
+<div class="dialog-wrapper">
+  <div class="dialog-box">
+
+    <!-- Header -->
+    <div class="dialog-header">
+      <div class="bot-avatar">🤖</div>
+      <div class="bot-info">
+        <h2>Sarvam Voice Bot</h2>
+        <p><span class="status-dot"></span>Powered by Sarvam AI</p>
+      </div>
+    </div>
+
+    <!-- Language Selector -->
+    <div class="lang-bar">
+      <label>Language:</label>
+      <select id="lang-select">
+        <option value="en-IN">English (India)</option>
+        <option value="hi-IN">Hindi</option>
+        <option value="bn-IN">Bengali</option>
+        <option value="gu-IN">Gujarati</option>
+        <option value="kn-IN">Kannada</option>
+        <option value="ml-IN">Malayalam</option>
+        <option value="mr-IN">Marathi</option>
+        <option value="od-IN">Odia</option>
+        <option value="pa-IN">Punjabi</option>
+        <option value="ta-IN">Tamil</option>
+        <option value="te-IN">Telugu</option>
+      </select>
+    </div>
+
+    <!-- Chat Messages -->
+    <div class="messages" id="messages">
+      <div class="message bot">
+        <div class="speaker">Sarvam Bot</div>
+        Namaste! 🙏 Click the microphone button below and start speaking. I'll understand you and respond in your chosen language!
+      </div>
+      <div class="typing-indicator" id="typing">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+
+    <!-- Waveform -->
+    <div class="waveform" id="waveform">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      <div class="bar"></div><div class="bar"></div>
+    </div>
+
+    <!-- Status -->
+    <div class="status-text" id="status-text">Press the mic to start speaking</div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button class="mic-btn" id="mic-btn" onclick="toggleRecording()">🎙️</button>
+      <div class="mic-label" id="mic-label">Tap to speak</div>
+      <button class="clear-btn" onclick="clearChat()">Clear chat</button>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // ── Configuration ──────────────────────────────────────────────────────────
+  const SARVAM_BASE = 'https://api.sarvam.ai';
+  const STT_ENDPOINT = `${SARVAM_BASE}/speech-to-text`;
+  const TTS_ENDPOINT = `${SARVAM_BASE}/text-to-speech`;
+  const CHAT_ENDPOINT = `${SARVAM_BASE}/v1/chat/completions`;
+
+  let API_KEY = localStorage.getItem('sarvam_api_key') || '';
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let isRecording = false;
+  let isProcessing = false;
+  let conversationHistory = [
+    {
+      role: 'system',
+      content: 'You are a helpful, friendly voice assistant powered by Sarvam AI. Keep responses concise (2-3 sentences max) and conversational, suitable for voice output. Respond in the same language the user speaks in.'
+    }
+  ];
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  window.addEventListener('load', () => {
+    if (API_KEY) {
+      document.getElementById('api-key-input').value = '••••••••••••';
+      hideBanner();
+    }
+  });
+
+  function saveApiKey() {
+    const input = document.getElementById('api-key-input').value.trim();
+    if (!input || input === '••••••••••••') { showToast('Please enter a valid API key.'); return; }
+    API_KEY = input;
+    localStorage.setItem('sarvam_api_key', API_KEY);
+    hideBanner();
+    showToast('API key saved! ✅', 'success');
+  }
+
+  function hideBanner() {
+    const banner = document.getElementById('api-key-banner');
+    banner.style.display = 'none';
+    document.querySelector('.dialog-wrapper').style.marginTop = '16px';
+  }
+
+  // ── Recording ──────────────────────────────────────────────────────────────
+  async function toggleRecording() {
+    if (isProcessing) return;
+    if (!API_KEY) { showToast('Please enter your Sarvam AI API key first.'); return; }
+
+    if (isRecording) {
+      stopRecording();
+    } else {
+      await startRecording();
+    }
+  }
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunks = [];
+
+      // Prefer webm/opus; fall back to whatever the browser supports
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : 'audio/ogg';
+
+      mediaRecorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+      mediaRecorder.onstop = () => { stream.getTracks().forEach(t => t.stop()); processAudio(); };
+      mediaRecorder.start(100);
+
+      isRecording = true;
+      setUIState('recording');
+    } catch (err) {
+      showToast('Microphone access denied. Please allow microphone permissions.');
+      console.error(err);
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+    isRecording = false;
+    setUIState('processing');
+  }
+
+  // ── Audio Processing Pipeline ──────────────────────────────────────────────
+  async function processAudio() {
+    isProcessing = true;
+    const mimeType = mediaRecorder.mimeType || 'audio/webm';
+    const ext = mimeType.includes('ogg') ? 'ogg' : 'webm';
+    const audioBlob = new Blob(audioChunks, { type: mimeType });
+
+    setStatus('Transcribing your speech…');
+    const transcript = await speechToText(audioBlob, ext);
+    if (!transcript) { setUIState('idle'); isProcessing = false; return; }
+
+    addMessage('user', transcript);
+    setStatus('Thinking…');
+    showTyping(true);
+
+    const reply = await chatWithLLM(transcript);
+    showTyping(false);
+    if (!reply) { setUIState('idle'); isProcessing = false; return; }
+
+    addMessage('bot', reply);
+    setStatus('Generating voice response…');
+
+    await textToSpeech(reply);
+    setUIState('idle');
+    isProcessing = false;
+  }
+
+  // ── Sarvam STT ─────────────────────────────────────────────────────────────
+  async function speechToText(audioBlob, ext) {
+    const lang = document.getElementById('lang-select').value;
+    const formData = new FormData();
+    formData.append('file', audioBlob, `audio.${ext}`);
+    formData.append('language_code', lang);
+    formData.append('model', 'saarika:v2');
+    formData.append('with_timestamps', 'false');
+
+    try {
+      const res = await fetch(STT_ENDPOINT, {
+        method: 'POST',
+        headers: { 'api-subscription-key': API_KEY },
+        body: formData
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast(`STT Error: ${err.message || res.statusText}`);
+        return null;
+      }
+      const data = await res.json();
+      return data.transcript || null;
+    } catch (err) {
+      showToast('Network error during transcription.');
+      console.error(err);
+      return null;
+    }
+  }
+
+  // ── Sarvam Chat / LLM ──────────────────────────────────────────────────────
+  async function chatWithLLM(userText) {
+    conversationHistory.push({ role: 'user', content: userText });
+
+    try {
+      const res = await fetch(CHAT_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-subscription-key': API_KEY
+        },
+        body: JSON.stringify({
+          model: 'sarvam-m',
+          messages: conversationHistory,
+          max_tokens: 200,
+          temperature: 0.7
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast(`Chat Error: ${err.message || res.statusText}`);
+        conversationHistory.pop();
+        return null;
+      }
+
+      const data = await res.json();
+      const reply = data.choices?.[0]?.message?.content?.trim() || null;
+      if (reply) conversationHistory.push({ role: 'assistant', content: reply });
+      return reply;
+    } catch (err) {
+      showToast('Network error during chat.');
+      console.error(err);
+      conversationHistory.pop();
+      return null;
+    }
+  }
+
+  // ── Sarvam TTS ─────────────────────────────────────────────────────────────
+  async function textToSpeech(text) {
+    const lang = document.getElementById('lang-select').value;
+
+    // Speaker map per language
+    const speakerMap = {
+      'en-IN': 'meera', 'hi-IN': 'meera', 'bn-IN': 'meera',
+      'gu-IN': 'meera', 'kn-IN': 'meera', 'ml-IN': 'meera',
+      'mr-IN': 'meera', 'od-IN': 'meera', 'pa-IN': 'meera',
+      'ta-IN': 'meera', 'te-IN': 'meera'
+    };
+
+    try {
+      const res = await fetch(TTS_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-subscription-key': API_KEY
+        },
+        body: JSON.stringify({
+          inputs: [text],
+          target_language_code: lang,
+          speaker: speakerMap[lang] || 'meera',
+          pitch: 0,
+          pace: 1.0,
+          loudness: 1.5,
+          speech_sample_rate: 22050,
+          enable_preprocessing: true,
+          model: 'bulbul:v1'
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast(`TTS Error: ${err.message || res.statusText}`);
+        return;
+      }
+
+      const data = await res.json();
+      // Sarvam TTS returns base64-encoded WAV in data.audios[0]
+      const base64Audio = data.audios?.[0];
+      if (!base64Audio) { showToast('No audio received from TTS.'); return; }
+
+      const audioBytes = Uint8Array.from(atob(base64Audio), c => c.charCodeAt(0));
+      const audioBlob = new Blob([audioBytes], { type: 'audio/wav' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audio.onended = () => URL.revokeObjectURL(audioUrl);
+      await audio.play();
+    } catch (err) {
+      showToast('Network error during text-to-speech.');
+      console.error(err);
+    }
+  }
+
+  // ── UI Helpers ─────────────────────────────────────────────────────────────
+  function setUIState(state) {
+    const btn = document.getElementById('mic-btn');
+    const label = document.getElementById('mic-label');
+    const waveform = document.getElementById('waveform');
+
+    btn.className = 'mic-btn';
+    waveform.classList.remove('active');
+
+    switch (state) {
+      case 'recording':
+        btn.classList.add('recording');
+        btn.textContent = '⏹️';
+        label.textContent = 'Tap to stop';
+        waveform.classList.add('active');
+        setStatus('Recording… speak now');
+        break;
+      case 'processing':
+        btn.classList.add('processing');
+        btn.textContent = '⏳';
+        label.textContent = 'Processing…';
+        setStatus('Processing your audio…');
+        break;
+      default:
+        btn.textContent = '🎙️';
+        label.textContent = 'Tap to speak';
+        setStatus('Press the mic to start speaking');
+    }
+  }
+
+  function setStatus(text) {
+    document.getElementById('status-text').textContent = text;
+  }
+
+  function showTyping(visible) {
+    const el = document.getElementById('typing');
+    el.className = visible ? 'typing-indicator visible' : 'typing-indicator';
+    if (visible) scrollMessages();
+  }
+
+  function addMessage(role, text) {
+    const messages = document.getElementById('messages');
+    const typing = document.getElementById('typing');
+
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+    div.innerHTML = `<div class="speaker">${role === 'bot' ? 'Sarvam Bot' : 'You'}</div>${escapeHtml(text)}`;
+    messages.insertBefore(div, typing);
+    scrollMessages();
+  }
+
+  function scrollMessages() {
+    const el = document.getElementById('messages');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function clearChat() {
+    const messages = document.getElementById('messages');
+    // Keep only the first welcome message and typing indicator
+    const children = Array.from(messages.children);
+    children.slice(1, -1).forEach(c => c.remove());
+    conversationHistory = [conversationHistory[0]]; // keep system prompt
+  }
+
+  function escapeHtml(text) {
+    return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  let toastTimer = null;
+  function showToast(msg, type = 'error') {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.style.background = type === 'success' ? '#16a34a' : '#ef4444';
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 4000);
+  }
+
+  // Allow pressing Enter on API key input
+  document.getElementById('api-key-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveApiKey();
+  });
+</script>
+</body>
+</html>
