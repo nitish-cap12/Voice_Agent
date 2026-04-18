@@ -468,11 +468,13 @@
   async function processAudio() {
     isProcessing = true;
     const mimeType = mediaRecorder.mimeType || 'audio/webm';
-    const ext = mimeType.includes('ogg') ? 'ogg' : 'webm';
-    const audioBlob = new Blob(audioChunks, { type: mimeType });
+    // Strip codec parameters for MIME type used in file upload (e.g. audio/webm;codecs=opus → audio/webm)
+    const baseMime = mimeType.split(';')[0];
+    const ext = baseMime.includes('ogg') ? 'ogg' : 'webm';
+    const audioBlob = new Blob(audioChunks, { type: baseMime });
 
     setStatus('Transcribing your speech…');
-    const transcript = await speechToText(audioBlob, ext);
+    const transcript = await speechToText(audioBlob, ext, baseMime);
     if (!transcript) { setUIState('idle'); isProcessing = false; return; }
 
     addMessage('user', transcript);
@@ -492,13 +494,13 @@
   }
 
   // ── Sarvam STT ─────────────────────────────────────────────────────────────
-  async function speechToText(audioBlob, ext) {
+  async function speechToText(audioBlob, ext, mimeType) {
     const lang = document.getElementById('lang-select').value;
     const formData = new FormData();
-    formData.append('file', audioBlob, `audio.${ext}`);
+    // Explicitly set file with correct base MIME type (no codec params)
+    formData.append('file', new File([audioBlob], `audio.${ext}`, { type: mimeType }));
     formData.append('language_code', lang);
     formData.append('model', 'saarika:v2');
-    formData.append('with_timestamps', 'false');
 
     try {
       const res = await fetch(STT_ENDPOINT, {
@@ -507,8 +509,11 @@
         body: formData
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        showToast(`STT Error: ${err.message || res.statusText}`);
+        const body = await res.text();
+        let msg = res.statusText;
+        try { msg = JSON.parse(body).message || JSON.parse(body).detail || msg; } catch {}
+        console.error('STT error response:', body);
+        showToast(`STT Error ${res.status}: ${msg}`);
         return null;
       }
       const data = await res.json();
@@ -562,11 +567,11 @@
   async function textToSpeech(text) {
     const lang = document.getElementById('lang-select').value;
 
-    // Speaker map per language
+    // Best available female speaker per language for bulbul:v2
     const speakerMap = {
-      'en-IN': 'meera', 'hi-IN': 'meera', 'bn-IN': 'meera',
-      'gu-IN': 'meera', 'kn-IN': 'meera', 'ml-IN': 'meera',
-      'mr-IN': 'meera', 'od-IN': 'meera', 'pa-IN': 'meera',
+      'en-IN': 'meera', 'hi-IN': 'meera',  'bn-IN': 'meera',
+      'gu-IN': 'meera', 'kn-IN': 'meera',  'ml-IN': 'meera',
+      'mr-IN': 'meera', 'od-IN': 'meera',  'pa-IN': 'meera',
       'ta-IN': 'meera', 'te-IN': 'meera'
     };
 
@@ -581,18 +586,19 @@
           inputs: [text],
           target_language_code: lang,
           speaker: speakerMap[lang] || 'meera',
-          pitch: 0,
           pace: 1.0,
-          loudness: 1.5,
           speech_sample_rate: 22050,
           enable_preprocessing: true,
-          model: 'bulbul:v1'
+          model: 'bulbul:v2'
         })
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        showToast(`TTS Error: ${err.message || res.statusText}`);
+        const body = await res.text();
+        let msg = res.statusText;
+        try { msg = JSON.parse(body).message || JSON.parse(body).detail || msg; } catch {}
+        console.error('TTS error response:', body);
+        showToast(`TTS Error ${res.status}: ${msg}`);
         return;
       }
 
