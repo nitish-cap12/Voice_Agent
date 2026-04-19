@@ -627,14 +627,6 @@
   async function textToSpeech(text) {
     const lang = document.getElementById('lang-select').value;
 
-    // bulbul:v3 speaker names (meera removed; anushka works across languages)
-    const speakerMap = {
-      'en-IN': 'anushka', 'hi-IN': 'anushka', 'bn-IN': 'anushka',
-      'gu-IN': 'anushka', 'kn-IN': 'anushka', 'ml-IN': 'anushka',
-      'mr-IN': 'anushka', 'od-IN': 'anushka', 'pa-IN': 'anushka',
-      'ta-IN': 'anushka', 'te-IN': 'anushka'
-    };
-
     try {
       const res = await fetch(TTS_ENDPOINT, {
         method: 'POST',
@@ -643,12 +635,15 @@
           'api-subscription-key': API_KEY
         },
         body: JSON.stringify({
-          // bulbul:v3 uses "text" (string), NOT "inputs" (array)
-          text: text,
+          inputs: [text],
           target_language_code: lang,
-          speaker: speakerMap[lang] || 'anushka',
+          speaker: 'anushka',
+          pitch: 0,
           pace: 1.0,
-          model: 'bulbul:v3'
+          loudness: 1.2,
+          speech_sample_rate: 22050,
+          enable_preprocessing: true,
+          model: 'bulbul:v2'
         })
       });
 
@@ -662,7 +657,6 @@
       }
 
       const data = await res.json();
-      // Sarvam TTS returns base64-encoded WAV in data.audios[0]
       const base64Audio = data.audios?.[0];
       if (!base64Audio) { showToast('No audio received from TTS.'); return; }
 
