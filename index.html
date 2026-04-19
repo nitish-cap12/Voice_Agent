@@ -493,7 +493,14 @@ STYLE RULES (voice-first):
       return;
     }
 
-    const transcript = await speechToText(audioBlob, ext, baseMime);
+    // Convert to WAV — guarantees Sarvam STT can parse regardless of browser codec
+    let uploadBlob = audioBlob, uploadExt = ext, uploadMime = baseMime;
+    try {
+      uploadBlob = await toWav(audioBlob);
+      uploadExt = 'wav'; uploadMime = 'audio/wav';
+    } catch (e) { console.warn('WAV conversion failed, sending original', e); }
+
+    const transcript = await speechToText(uploadBlob, uploadExt, uploadMime);
     if (!transcript || !transcript.trim()) {
       isTurnInProgress = false;
       setState('idle', 'Tap the mic to speak');
@@ -520,6 +527,38 @@ STYLE RULES (voice-first):
     setState('speaking', 'Jimi is speaking…');
     await speak(msg);
     await beginListening();
+  }
+
+  // ── Convert any browser audio blob → WAV (PCM) for reliable STT ──
+  async function toWav(blob) {
+    const arrayBuffer = await blob.arrayBuffer();
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    audioCtx.close();
+
+    const numCh = audioBuffer.numberOfChannels;
+    const sr = audioBuffer.sampleRate;
+    const len = audioBuffer.length;
+    const wavBuf = new ArrayBuffer(44 + len * numCh * 2);
+    const v = new DataView(wavBuf);
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+
+    str(0, 'RIFF'); v.setUint32(4, 36 + len * numCh * 2, true);
+    str(8, 'WAVE'); str(12, 'fmt '); v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true); v.setUint16(22, numCh, true);
+    v.setUint32(24, sr, true); v.setUint32(28, sr * numCh * 2, true);
+    v.setUint16(32, numCh * 2, true); v.setUint16(34, 16, true);
+    str(36, 'data'); v.setUint32(40, len * numCh * 2, true);
+
+    let offset = 44;
+    for (let i = 0; i < len; i++) {
+      for (let ch = 0; ch < numCh; ch++) {
+        const s = Math.max(-1, Math.min(1, audioBuffer.getChannelData(ch)[i]));
+        v.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        offset += 2;
+      }
+    }
+    return new Blob([wavBuf], { type: 'audio/wav' });
   }
 
   // ── STT ──
