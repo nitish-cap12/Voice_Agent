@@ -627,12 +627,12 @@
   async function textToSpeech(text) {
     const lang = document.getElementById('lang-select').value;
 
-    // Female speakers available in bulbul:v3
+    // bulbul:v3 speaker names (meera removed; anushka works across languages)
     const speakerMap = {
-      'en-IN': 'meera', 'hi-IN': 'meera', 'bn-IN': 'meera',
-      'gu-IN': 'meera', 'kn-IN': 'meera', 'ml-IN': 'meera',
-      'mr-IN': 'meera', 'od-IN': 'meera', 'pa-IN': 'meera',
-      'ta-IN': 'meera', 'te-IN': 'meera'
+      'en-IN': 'anushka', 'hi-IN': 'anushka', 'bn-IN': 'anushka',
+      'gu-IN': 'anushka', 'kn-IN': 'anushka', 'ml-IN': 'anushka',
+      'mr-IN': 'anushka', 'od-IN': 'anushka', 'pa-IN': 'anushka',
+      'ta-IN': 'anushka', 'te-IN': 'anushka'
     };
 
     try {
@@ -643,12 +643,11 @@
           'api-subscription-key': API_KEY
         },
         body: JSON.stringify({
-          inputs: [text],
+          // bulbul:v3 uses "text" (string), NOT "inputs" (array)
+          text: text,
           target_language_code: lang,
-          speaker: speakerMap[lang] || 'meera',
+          speaker: speakerMap[lang] || 'anushka',
           pace: 1.0,
-          speech_sample_rate: 22050,
-          enable_preprocessing: true,
           model: 'bulbul:v3'
         })
       });
