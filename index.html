@@ -500,7 +500,8 @@
     // Explicitly set file with correct base MIME type (no codec params)
     formData.append('file', new File([audioBlob], `audio.${ext}`, { type: mimeType }));
     formData.append('language_code', lang);
-    formData.append('model', 'saarika:v2');
+    formData.append('model', 'saaras:v3');
+    formData.append('mode', 'transcribe');
 
     try {
       const res = await fetch(STT_ENDPOINT, {
@@ -567,11 +568,11 @@
   async function textToSpeech(text) {
     const lang = document.getElementById('lang-select').value;
 
-    // Best available female speaker per language for bulbul:v2
+    // Female speakers available in bulbul:v3
     const speakerMap = {
-      'en-IN': 'meera', 'hi-IN': 'meera',  'bn-IN': 'meera',
-      'gu-IN': 'meera', 'kn-IN': 'meera',  'ml-IN': 'meera',
-      'mr-IN': 'meera', 'od-IN': 'meera',  'pa-IN': 'meera',
+      'en-IN': 'meera', 'hi-IN': 'meera', 'bn-IN': 'meera',
+      'gu-IN': 'meera', 'kn-IN': 'meera', 'ml-IN': 'meera',
+      'mr-IN': 'meera', 'od-IN': 'meera', 'pa-IN': 'meera',
       'ta-IN': 'meera', 'te-IN': 'meera'
     };
 
@@ -589,7 +590,7 @@
           pace: 1.0,
           speech_sample_rate: 22050,
           enable_preprocessing: true,
-          model: 'bulbul:v2'
+          model: 'bulbul:v3'
         })
       });
 
