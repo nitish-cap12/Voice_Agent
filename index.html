@@ -580,7 +580,7 @@ STYLE RULES (voice-first):
         body: JSON.stringify({
           model: 'sarvam-m',
           messages,
-          max_tokens: 180,
+          max_tokens: 100,
           temperature: 0.7
         })
       });
@@ -606,8 +606,39 @@ STYLE RULES (voice-first):
   }
 
   // ── TTS + playback ──
+  // Split on sentence boundaries into chunks of ≤500 chars (TTS API limit)
+  function splitIntoChunks(text, maxLen = 500) {
+    if (text.length <= maxLen) return [text];
+    const sentences = text.match(/[^.!?]+[.!?]+\s*/g) || [text];
+    const chunks = [];
+    let current = '';
+    for (const s of sentences) {
+      if ((current + s).length > maxLen) {
+        if (current.trim()) chunks.push(current.trim());
+        current = s.length > maxLen ? s.substring(0, maxLen) : s;
+      } else {
+        current += s;
+      }
+    }
+    if (current.trim()) chunks.push(current.trim());
+    return chunks.length ? chunks : [text.substring(0, maxLen)];
+  }
+
+  async function playBase64Audio(base64) {
+    const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }));
+    await new Promise((resolve) => {
+      speakResolve = resolve;
+      currentAudio = new Audio(url);
+      currentAudio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; speakResolve = null; resolve(); };
+      currentAudio.onerror = () => { URL.revokeObjectURL(url); currentAudio = null; speakResolve = null; resolve(); };
+      currentAudio.play().catch(() => { speakResolve = null; resolve(); });
+    });
+  }
+
   async function speak(text) {
     const lang = document.getElementById('lang-select').value;
+    const chunks = splitIntoChunks(text);
     try {
       const res = await fetch(TTS_ENDPOINT, {
         method: 'POST',
@@ -616,7 +647,7 @@ STYLE RULES (voice-first):
           'api-subscription-key': API_KEY
         },
         body: JSON.stringify({
-          inputs: [text],
+          inputs: chunks,
           target_language_code: lang,
           speaker: 'anushka',
           pitch: 0,
@@ -638,20 +669,10 @@ STYLE RULES (voice-first):
       }
 
       const data = await res.json();
-      const base64Audio = data.audios?.[0];
-      if (!base64Audio) return;
-
-      const audioBytes = Uint8Array.from(atob(base64Audio), c => c.charCodeAt(0));
-      const audioBlob = new Blob([audioBytes], { type: 'audio/wav' });
-      const audioUrl = URL.createObjectURL(audioBlob);
-
-      await new Promise((resolve) => {
-        speakResolve = resolve;
-        currentAudio = new Audio(audioUrl);
-        currentAudio.onended = () => { URL.revokeObjectURL(audioUrl); currentAudio = null; speakResolve = null; resolve(); };
-        currentAudio.onerror = () => { URL.revokeObjectURL(audioUrl); currentAudio = null; speakResolve = null; resolve(); };
-        currentAudio.play().catch(() => { speakResolve = null; resolve(); });
-      });
+      for (const base64Audio of (data.audios || [])) {
+        if (!base64Audio) continue;
+        await playBase64Audio(base64Audio);
+      }
     } catch (err) {
       console.error('TTS network error:', err);
     }
