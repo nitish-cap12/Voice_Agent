@@ -434,7 +434,6 @@ STYLE RULES (voice-first):
   // ── Greeting (auto-spoken by Jimi on first tap) ──
   async function playGreeting() {
     const greeting = "Hi, I'm Jimi, your travel agent. Let me know how can I help you?";
-    conversationHistory.push({ role: 'assistant', content: greeting });
     setState('speaking', 'Jimi is greeting you…');
     await speak(greeting);
     // After greeting → auto-listen
