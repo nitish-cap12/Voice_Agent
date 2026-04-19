@@ -273,6 +273,37 @@
       text-align: center;
     }
 
+    /* Voice Agent toggle */
+    .agent-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .agent-toggle input { display: none; }
+    .toggle-track {
+      width: 42px; height: 24px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 12px;
+      position: relative;
+      transition: background 0.3s;
+      flex-shrink: 0;
+    }
+    .agent-toggle input:checked ~ .toggle-track { background: #e94560; }
+    .toggle-thumb {
+      width: 18px; height: 18px;
+      background: #fff;
+      border-radius: 50%;
+      position: absolute;
+      top: 3px; left: 3px;
+      transition: transform 0.3s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }
+    .agent-toggle input:checked ~ .toggle-track .toggle-thumb { transform: translateX(18px); }
+    .toggle-text { color: rgba(255,255,255,0.7); font-size: 13px; }
+    .agent-toggle input:checked ~ .toggle-text { color: #fff; font-weight: 600; }
+
     .clear-btn {
       background: rgba(255,255,255,0.08);
       border: 1px solid rgba(255,255,255,0.15);
@@ -369,6 +400,14 @@
     <div class="controls">
       <button class="mic-btn" id="mic-btn" onclick="toggleRecording()">🎙️</button>
       <div class="mic-label" id="mic-label">Tap to speak</div>
+
+      <!-- Voice Agent toggle -->
+      <label class="agent-toggle">
+        <input type="checkbox" id="auto-listen-toggle" onchange="toggleAutoListen(this.checked)" />
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <span class="toggle-text">Voice Agent mode</span>
+      </label>
+
       <button class="clear-btn" onclick="clearChat()">Clear chat</button>
     </div>
 
@@ -389,10 +428,11 @@
   let audioChunks = [];
   let isRecording = false;
   let isProcessing = false;
+  let autoListen = false;
   let conversationHistory = [
     {
       role: 'system',
-      content: 'You are a helpful, friendly voice assistant powered by Sarvam AI. Keep responses concise (2-3 sentences max) and conversational, suitable for voice output. Respond in the same language the user speaks in.'
+      content: 'You are a concise voice assistant. CRITICAL RULES: (1) Reply ONLY in the same language the user spoke in — never mix languages. (2) Keep every reply to 2 sentences maximum — short answers suit voice. (3) Never include any markdown, bullet points, or formatting. (4) Never output reasoning or thinking text.'
     }
   ];
 
@@ -417,6 +457,17 @@
     const banner = document.getElementById('api-key-banner');
     banner.style.display = 'none';
     document.querySelector('.dialog-wrapper').style.marginTop = '16px';
+  }
+
+  function toggleAutoListen(enabled) {
+    autoListen = enabled;
+    const label = document.getElementById('mic-label');
+    if (enabled) {
+      label.textContent = 'Voice Agent active — tap mic to start';
+      showToast('Voice Agent mode ON — bot will auto-listen after speaking', 'success');
+    } else {
+      label.textContent = 'Tap to speak';
+    }
   }
 
   // ── Recording ──────────────────────────────────────────────────────────────
@@ -489,8 +540,14 @@
     setStatus('Generating voice response…');
 
     await textToSpeech(reply);
-    setUIState('idle');
     isProcessing = false;
+
+    // Voice Agent mode: auto-listen after bot finishes speaking
+    if (autoListen) {
+      await startRecording();
+    } else {
+      setUIState('idle');
+    }
   }
 
   // ── Sarvam STT ─────────────────────────────────────────────────────────────
@@ -553,7 +610,9 @@
       }
 
       const data = await res.json();
-      const reply = data.choices?.[0]?.message?.content?.trim() || null;
+      const raw = data.choices?.[0]?.message?.content || '';
+      // Strip <think>...</think> reasoning blocks that sarvam-m emits
+      const reply = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim() || null;
       if (reply) conversationHistory.push({ role: 'assistant', content: reply });
       return reply;
     } catch (err) {
