@@ -383,6 +383,8 @@ STYLE RULES (voice-first):
   let state = 'idle'; // idle | listening | thinking | speaking
   let conversationStarted = false;
   let currentAudio = null;
+  let speakResolve = null; // resolve handle for the current speak() promise
+  let isTurnInProgress = false; // prevent concurrent processTurn calls
   let conversationHistory = [{ role: 'system', content: SYSTEM_PROMPT }];
 
   // ── Init ──
@@ -476,6 +478,8 @@ STYLE RULES (voice-first):
 
   // ── One conversation turn: STT → LLM → TTS → auto-listen ──
   async function processTurn() {
+    if (isTurnInProgress) return; // drop concurrent triggers
+    isTurnInProgress = true;
     setState('thinking', 'Understanding you…');
 
     const mimeType = mediaRecorder.mimeType || 'audio/webm';
@@ -484,14 +488,14 @@ STYLE RULES (voice-first):
     const audioBlob = new Blob(audioChunks, { type: baseMime });
 
     if (audioBlob.size < 1200) {
-      // Too short — likely silence
+      isTurnInProgress = false;
       await fallback("Sorry, I didn't catch that. Could you say it again?");
       return;
     }
 
     const transcript = await speechToText(audioBlob, ext, baseMime);
     if (!transcript || !transcript.trim()) {
-      // If toast already shown (API error), go idle; otherwise ask to repeat
+      isTurnInProgress = false;
       setState('idle', 'Tap the mic to speak');
       return;
     }
@@ -499,12 +503,14 @@ STYLE RULES (voice-first):
     setState('thinking', 'Jimi is thinking…');
     const reply = await chatWithLLM(transcript);
     if (!reply) {
+      isTurnInProgress = false;
       setState('idle', 'Tap the mic to speak');
       return;
     }
 
     setState('speaking', 'Jimi is speaking…');
     await speak(reply);
+    isTurnInProgress = false;
 
     // Turn-taking: auto-listen again
     await beginListening();
@@ -549,8 +555,20 @@ STYLE RULES (voice-first):
   }
 
   // ── LLM ──
+  // Ensure messages array always starts with system then user (Sarvam requirement)
+  function buildValidMessages() {
+    const sys = conversationHistory.filter(m => m.role === 'system');
+    const rest = conversationHistory.filter(m => m.role !== 'system');
+    const firstUserIdx = rest.findIndex(m => m.role === 'user');
+    if (firstUserIdx === -1) return null; // no user message yet — shouldn't happen
+    return [...sys, ...rest.slice(firstUserIdx)];
+  }
+
   async function chatWithLLM(userText) {
     conversationHistory.push({ role: 'user', content: userText });
+
+    const messages = buildValidMessages();
+    if (!messages) { conversationHistory.pop(); return null; }
 
     try {
       const res = await fetch(CHAT_ENDPOINT, {
@@ -561,7 +579,7 @@ STYLE RULES (voice-first):
         },
         body: JSON.stringify({
           model: 'sarvam-m',
-          messages: conversationHistory,
+          messages,
           max_tokens: 180,
           temperature: 0.7
         })
@@ -628,10 +646,11 @@ STYLE RULES (voice-first):
       const audioUrl = URL.createObjectURL(audioBlob);
 
       await new Promise((resolve) => {
+        speakResolve = resolve;
         currentAudio = new Audio(audioUrl);
-        currentAudio.onended = () => { URL.revokeObjectURL(audioUrl); currentAudio = null; resolve(); };
-        currentAudio.onerror = () => { URL.revokeObjectURL(audioUrl); currentAudio = null; resolve(); };
-        currentAudio.play().catch(() => resolve());
+        currentAudio.onended = () => { URL.revokeObjectURL(audioUrl); currentAudio = null; speakResolve = null; resolve(); };
+        currentAudio.onerror = () => { URL.revokeObjectURL(audioUrl); currentAudio = null; speakResolve = null; resolve(); };
+        currentAudio.play().catch(() => { speakResolve = null; resolve(); });
       });
     } catch (err) {
       console.error('TTS network error:', err);
@@ -643,6 +662,8 @@ STYLE RULES (voice-first):
       currentAudio.pause();
       currentAudio = null;
     }
+    // Resolve the pending speak() promise so the async chain doesn't leak
+    if (speakResolve) { speakResolve(); speakResolve = null; }
   }
 
   // ── UI state ──
