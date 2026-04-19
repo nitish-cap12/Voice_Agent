@@ -492,14 +492,15 @@ STYLE RULES (voice-first):
 
     const transcript = await speechToText(audioBlob, ext, baseMime);
     if (!transcript || !transcript.trim()) {
-      await fallback("I couldn't hear you clearly. Could you repeat that?");
+      // If toast already shown (API error), go idle; otherwise ask to repeat
+      setState('idle', 'Tap the mic to speak');
       return;
     }
 
     setState('thinking', 'Jimi is thinking…');
     const reply = await chatWithLLM(transcript);
     if (!reply) {
-      await fallback("I hit a small hiccup on my end. Could you try that again?");
+      setState('idle', 'Tap the mic to speak');
       return;
     }
 
@@ -533,13 +534,17 @@ STYLE RULES (voice-first):
       });
       if (!res.ok) {
         const body = await res.text();
+        let msg = res.statusText;
+        try { msg = JSON.parse(body).message || JSON.parse(body).detail || msg; } catch {}
         console.error('STT error:', body);
+        showToast(`Transcribe error ${res.status}: ${msg}`);
         return null;
       }
       const data = await res.json();
       return data.transcript || null;
     } catch (err) {
       console.error('STT network error:', err);
+      showToast('Network error during transcription.');
       return null;
     }
   }
@@ -564,6 +569,8 @@ STYLE RULES (voice-first):
       });
 
       if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        showToast(`Chat error: ${errBody.message || res.statusText}`);
         conversationHistory.pop();
         return null;
       }
@@ -606,7 +613,10 @@ STYLE RULES (voice-first):
 
       if (!res.ok) {
         const body = await res.text();
+        let msg = res.statusText;
+        try { msg = JSON.parse(body).message || JSON.parse(body).detail || msg; } catch {}
         console.error('TTS error:', body);
+        showToast(`Voice error ${res.status}: ${msg}`);
         return;
       }
 
