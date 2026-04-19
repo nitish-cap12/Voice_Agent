@@ -3,24 +3,51 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sarvam AI Voice Bot</title>
+  <title>Jimi — Your Travel Voice Agent</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 45%, #1e3a8a 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
+      position: relative;
     }
 
-    /* ── API Key Banner ── */
+    /* Floating travel icons background */
+    .bg-deco {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      opacity: 0.08;
+      font-size: 42px;
+    }
+    .bg-deco span {
+      position: absolute;
+      animation: drift 20s linear infinite;
+    }
+    .bg-deco span:nth-child(1) { top: 10%;  left: 8%;  animation-delay: 0s;  }
+    .bg-deco span:nth-child(2) { top: 25%;  left: 82%; animation-delay: -4s; }
+    .bg-deco span:nth-child(3) { top: 70%;  left: 12%; animation-delay: -8s; }
+    .bg-deco span:nth-child(4) { top: 55%;  left: 78%; animation-delay: -12s;}
+    .bg-deco span:nth-child(5) { top: 85%;  left: 45%; animation-delay: -16s;}
+    .bg-deco span:nth-child(6) { top: 15%;  left: 50%; animation-delay: -6s; }
+    @keyframes drift {
+      0%   { transform: translate(0,0) rotate(0deg); }
+      50%  { transform: translate(30px,-20px) rotate(10deg); }
+      100% { transform: translate(0,0) rotate(0deg); }
+    }
+
+    /* API Key Banner */
     #api-key-banner {
       position: fixed;
       top: 0; left: 0; right: 0;
-      background: #ff6b35;
+      background: #f59e0b;
       color: #fff;
       padding: 10px 20px;
       text-align: center;
@@ -43,280 +70,203 @@
     #api-key-banner button {
       padding: 6px 14px;
       background: #fff;
-      color: #ff6b35;
+      color: #b45309;
       border: none;
       border-radius: 6px;
       font-weight: 700;
       cursor: pointer;
       font-size: 13px;
     }
-    #api-key-banner button:hover { background: #ffe0d4; }
+    #api-key-banner button:hover { background: #fde68a; }
 
-    /* ── Main Dialog ── */
-    .dialog-wrapper {
-      margin-top: 52px;
+    /* Main stage */
+    .stage {
+      position: relative;
+      z-index: 2;
       width: 100%;
-      max-width: 480px;
-      padding: 16px;
+      max-width: 520px;
+      padding: 24px;
+      text-align: center;
+      color: #fff;
     }
 
-    .dialog-box {
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 24px;
-      overflow: hidden;
-      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+    .brand {
+      font-size: 14px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      opacity: 0.75;
+      margin-bottom: 6px;
+    }
+    .title {
+      font-size: 30px;
+      font-weight: 800;
+      margin-bottom: 4px;
+      letter-spacing: -0.5px;
+    }
+    .subtitle {
+      font-size: 14px;
+      opacity: 0.8;
+      margin-bottom: 32px;
     }
 
-    /* Header */
-    .dialog-header {
-      background: linear-gradient(135deg, #e94560, #0f3460);
-      padding: 20px 24px;
+    /* Jimi Avatar */
+    .avatar-wrap {
+      position: relative;
+      width: 160px;
+      height: 160px;
+      margin: 0 auto 24px;
+    }
+    .avatar {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #fbbf24 0%, #f97316 60%, #ec4899 100%);
       display: flex;
       align-items: center;
-      gap: 14px;
+      justify-content: center;
+      font-size: 72px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4), inset 0 0 40px rgba(255,255,255,0.15);
+      transition: transform 0.4s ease;
     }
-    .bot-avatar {
-      width: 48px; height: 48px;
-      background: rgba(255,255,255,0.2);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 22px;
-      flex-shrink: 0;
+    .avatar.speaking {
+      animation: gentleBob 1.8s ease-in-out infinite;
     }
-    .bot-info h2 { color: #fff; font-size: 18px; font-weight: 700; }
-    .bot-info p  { color: rgba(255,255,255,0.7); font-size: 12px; margin-top: 2px; }
-    .status-dot {
-      width: 10px; height: 10px;
-      background: #4ade80;
-      border-radius: 50%;
-      display: inline-block;
-      margin-right: 6px;
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.4; }
+    @keyframes gentleBob {
+      0%, 100% { transform: scale(1); }
+      50%      { transform: scale(1.05); }
     }
 
-    /* Language selector */
-    .lang-bar {
-      background: rgba(0,0,0,0.2);
-      padding: 10px 20px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+    .halo {
+      position: absolute;
+      inset: -12px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.3);
+      opacity: 0;
     }
-    .lang-bar label { color: rgba(255,255,255,0.6); font-size: 12px; }
-    .lang-bar select {
-      flex: 1;
-      padding: 5px 10px;
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 8px;
-      background: rgba(255,255,255,0.08);
+    .avatar-wrap.active .halo { animation: haloPulse 2s ease-out infinite; }
+    .avatar-wrap.active .halo:nth-child(3) { animation-delay: 0.7s; }
+    @keyframes haloPulse {
+      0%   { transform: scale(0.95); opacity: 0.7; }
+      100% { transform: scale(1.4);  opacity: 0; }
+    }
+
+    /* Status */
+    .status {
+      font-size: 15px;
+      font-weight: 500;
+      min-height: 22px;
+      margin-bottom: 24px;
+      opacity: 0.9;
+    }
+
+    /* Waveform */
+    .waveform {
+      display: flex;
+      visibility: hidden;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      height: 48px;
+      margin-bottom: 20px;
+    }
+    .waveform.active { visibility: visible; }
+    .waveform .bar {
+      width: 5px;
+      background: #fff;
+      border-radius: 3px;
+      animation: wave 0.9s ease-in-out infinite;
+    }
+    .waveform .bar:nth-child(1) { animation-delay: 0s;    height: 18px; }
+    .waveform .bar:nth-child(2) { animation-delay: 0.1s;  height: 32px; }
+    .waveform .bar:nth-child(3) { animation-delay: 0.2s;  height: 24px; }
+    .waveform .bar:nth-child(4) { animation-delay: 0.3s;  height: 40px; }
+    .waveform .bar:nth-child(5) { animation-delay: 0.4s;  height: 28px; }
+    .waveform .bar:nth-child(6) { animation-delay: 0.3s;  height: 36px; }
+    .waveform .bar:nth-child(7) { animation-delay: 0.2s;  height: 22px; }
+    .waveform .bar:nth-child(8) { animation-delay: 0.1s;  height: 30px; }
+    @keyframes wave {
+      0%, 100% { transform: scaleY(1); }
+      50%      { transform: scaleY(0.35); }
+    }
+
+    /* Mic button */
+    .mic-btn {
+      width: 96px; height: 96px;
+      border-radius: 50%;
+      border: none;
+      background: #fff;
+      color: #0369a1;
+      font-size: 38px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .mic-btn:hover  { transform: scale(1.06); }
+    .mic-btn:active { transform: scale(0.94); }
+    .mic-btn.listening {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: #fff;
+      animation: listenPulse 1.4s ease-in-out infinite;
+    }
+    .mic-btn.thinking {
+      background: linear-gradient(135deg, #facc15, #f59e0b);
+      color: #fff;
+      cursor: wait;
+    }
+    .mic-btn.speaking {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      cursor: default;
+    }
+    @keyframes listenPulse {
+      0%, 100% { box-shadow: 0 12px 32px rgba(239,68,68,0.5); }
+      50%      { box-shadow: 0 12px 48px rgba(239,68,68,0.8), 0 0 0 18px rgba(239,68,68,0.15); }
+    }
+
+    .hint {
+      margin-top: 18px;
+      font-size: 12px;
+      opacity: 0.7;
+      letter-spacing: 0.5px;
+    }
+
+    .lang-wrap {
+      position: fixed;
+      bottom: 20px; right: 20px;
+      z-index: 5;
+    }
+    .lang-wrap select {
+      padding: 8px 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
       color: #fff;
       font-size: 13px;
       outline: none;
       cursor: pointer;
     }
-    .lang-bar select option { background: #1a1a2e; color: #fff; }
+    .lang-wrap select option { background: #1e3a8a; color: #fff; }
 
-    /* Messages */
-    .messages {
-      height: 340px;
-      overflow-y: auto;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      scroll-behavior: smooth;
-    }
-    .messages::-webkit-scrollbar { width: 4px; }
-    .messages::-webkit-scrollbar-track { background: transparent; }
-    .messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
-
-    .message {
-      max-width: 80%;
-      padding: 12px 16px;
-      border-radius: 18px;
-      font-size: 14px;
-      line-height: 1.5;
-      animation: fadeIn 0.3s ease;
-    }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-
-    .message.bot {
-      align-self: flex-start;
-      background: rgba(255,255,255,0.1);
-      color: #e2e8f0;
-      border-bottom-left-radius: 4px;
-    }
-    .message.user {
-      align-self: flex-end;
-      background: linear-gradient(135deg, #e94560, #c62a47);
-      color: #fff;
-      border-bottom-right-radius: 4px;
-    }
-    .message .speaker {
-      font-size: 11px;
-      font-weight: 700;
-      opacity: 0.7;
-      margin-bottom: 4px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    /* Typing indicator */
-    .typing-indicator {
-      align-self: flex-start;
-      background: rgba(255,255,255,0.1);
-      border-radius: 18px;
-      border-bottom-left-radius: 4px;
-      padding: 14px 18px;
-      display: none;
-    }
-    .typing-indicator.visible { display: flex; gap: 6px; align-items: center; }
-    .typing-indicator span {
-      width: 8px; height: 8px;
-      background: rgba(255,255,255,0.5);
-      border-radius: 50%;
-      animation: bounce 1.2s infinite;
-    }
-    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes bounce {
-      0%, 60%, 100% { transform: translateY(0); }
-      30%           { transform: translateY(-8px); }
-    }
-
-    /* Waveform */
-    .waveform {
-      display: none;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      height: 36px;
-      padding: 0 20px;
-    }
-    .waveform.active { display: flex; }
-    .waveform .bar {
-      width: 4px;
-      background: #e94560;
-      border-radius: 2px;
-      animation: wave 0.8s ease-in-out infinite;
-    }
-    .waveform .bar:nth-child(1) { animation-delay: 0s;    height: 16px; }
-    .waveform .bar:nth-child(2) { animation-delay: 0.1s;  height: 28px; }
-    .waveform .bar:nth-child(3) { animation-delay: 0.2s;  height: 20px; }
-    .waveform .bar:nth-child(4) { animation-delay: 0.3s;  height: 34px; }
-    .waveform .bar:nth-child(5) { animation-delay: 0.4s;  height: 22px; }
-    .waveform .bar:nth-child(6) { animation-delay: 0.3s;  height: 30px; }
-    .waveform .bar:nth-child(7) { animation-delay: 0.2s;  height: 18px; }
-    .waveform .bar:nth-child(8) { animation-delay: 0.1s;  height: 26px; }
-    @keyframes wave {
-      0%, 100% { transform: scaleY(1); }
-      50%       { transform: scaleY(0.4); }
-    }
-
-    /* Status text */
-    .status-text {
-      text-align: center;
-      font-size: 12px;
-      color: rgba(255,255,255,0.5);
-      padding: 0 20px 6px;
-      min-height: 20px;
-    }
-
-    /* Controls */
-    .controls {
-      padding: 16px 24px 24px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .mic-btn {
-      width: 72px; height: 72px;
-      border-radius: 50%;
-      border: none;
-      background: linear-gradient(135deg, #e94560, #c62a47);
-      color: #fff;
-      font-size: 28px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 8px 24px rgba(233, 69, 96, 0.4);
-      display: flex; align-items: center; justify-content: center;
-      position: relative;
-    }
-    .mic-btn:hover  { transform: scale(1.08); box-shadow: 0 12px 32px rgba(233,69,96,0.55); }
-    .mic-btn:active { transform: scale(0.95); }
-    .mic-btn.recording {
-      background: linear-gradient(135deg, #4ade80, #16a34a);
-      box-shadow: 0 8px 24px rgba(74, 222, 128, 0.5);
-      animation: recordPulse 1.5s infinite;
-    }
-    .mic-btn.processing {
-      background: linear-gradient(135deg, #f59e0b, #d97706);
-      box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);
-      cursor: not-allowed;
-    }
-    @keyframes recordPulse {
-      0%, 100% { box-shadow: 0 8px 24px rgba(74,222,128,0.5); }
-      50%       { box-shadow: 0 8px 40px rgba(74,222,128,0.8), 0 0 0 12px rgba(74,222,128,0.1); }
-    }
-
-    .mic-label {
-      color: rgba(255,255,255,0.6);
-      font-size: 12px;
-      text-align: center;
-    }
-
-    /* Voice Agent toggle */
-    .agent-toggle {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      cursor: pointer;
-      user-select: none;
-    }
-    .agent-toggle input { display: none; }
-    .toggle-track {
-      width: 42px; height: 24px;
-      background: rgba(255,255,255,0.15);
-      border-radius: 12px;
-      position: relative;
-      transition: background 0.3s;
-      flex-shrink: 0;
-    }
-    .agent-toggle input:checked ~ .toggle-track { background: #e94560; }
-    .toggle-thumb {
-      width: 18px; height: 18px;
-      background: #fff;
-      border-radius: 50%;
-      position: absolute;
-      top: 3px; left: 3px;
-      transition: transform 0.3s;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
-    }
-    .agent-toggle input:checked ~ .toggle-track .toggle-thumb { transform: translateX(18px); }
-    .toggle-text { color: rgba(255,255,255,0.7); font-size: 13px; }
-    .agent-toggle input:checked ~ .toggle-text { color: #fff; font-weight: 600; }
-
-    .clear-btn {
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.15);
-      color: rgba(255,255,255,0.5);
-      padding: 7px 18px;
+    .end-btn {
+      position: fixed;
+      bottom: 20px; left: 20px;
+      padding: 8px 16px;
       border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      color: #fff;
       font-size: 12px;
       cursor: pointer;
-      transition: all 0.2s;
+      z-index: 5;
     }
-    .clear-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+    .end-btn:hover { background: rgba(255,255,255,0.2); }
 
-    /* Error toast */
+    /* Toast */
     #toast {
       position: fixed;
       bottom: 24px; left: 50%; transform: translateX(-50%);
@@ -338,105 +288,104 @@
 </head>
 <body>
 
+<div class="bg-deco">
+  <span>✈️</span><span>🌍</span><span>🏝️</span>
+  <span>🗺️</span><span>🏔️</span><span>🧳</span>
+</div>
+
 <!-- API Key Banner -->
 <div id="api-key-banner">
-  <span>🔑 Enter your Sarvam AI API Key:</span>
+  <span>🔑 Enter your API Key to begin:</span>
   <input type="password" id="api-key-input" placeholder="Paste API key here…" />
-  <button onclick="saveApiKey()">Save</button>
+  <button onclick="saveApiKey()">Start</button>
 </div>
 
-<div class="dialog-wrapper">
-  <div class="dialog-box">
+<div class="stage">
+  <div class="brand">Travel Voice Agent</div>
+  <div class="title">Hi, I'm Jimi ✨</div>
+  <div class="subtitle">Your personal travel companion</div>
 
-    <!-- Header -->
-    <div class="dialog-header">
-      <div class="bot-avatar">🤖</div>
-      <div class="bot-info">
-        <h2>Sarvam Voice Bot</h2>
-        <p><span class="status-dot"></span>Powered by Sarvam AI</p>
-      </div>
-    </div>
-
-    <!-- Language Selector -->
-    <div class="lang-bar">
-      <label>Language:</label>
-      <select id="lang-select">
-        <option value="en-IN">English (India)</option>
-        <option value="hi-IN">Hindi</option>
-        <option value="bn-IN">Bengali</option>
-        <option value="gu-IN">Gujarati</option>
-        <option value="kn-IN">Kannada</option>
-        <option value="ml-IN">Malayalam</option>
-        <option value="mr-IN">Marathi</option>
-        <option value="od-IN">Odia</option>
-        <option value="pa-IN">Punjabi</option>
-        <option value="ta-IN">Tamil</option>
-        <option value="te-IN">Telugu</option>
-      </select>
-    </div>
-
-    <!-- Chat Messages -->
-    <div class="messages" id="messages">
-      <div class="message bot">
-        <div class="speaker">Sarvam Bot</div>
-        Namaste! 🙏 Click the microphone button below and start speaking. I'll understand you and respond in your chosen language!
-      </div>
-      <div class="typing-indicator" id="typing">
-        <span></span><span></span><span></span>
-      </div>
-    </div>
-
-    <!-- Waveform -->
-    <div class="waveform" id="waveform">
-      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-      <div class="bar"></div><div class="bar"></div>
-    </div>
-
-    <!-- Status -->
-    <div class="status-text" id="status-text">Press the mic to start speaking</div>
-
-    <!-- Controls -->
-    <div class="controls">
-      <button class="mic-btn" id="mic-btn" onclick="toggleRecording()">🎙️</button>
-      <div class="mic-label" id="mic-label">Tap to speak</div>
-
-      <!-- Voice Agent toggle -->
-      <label class="agent-toggle">
-        <input type="checkbox" id="auto-listen-toggle" onchange="toggleAutoListen(this.checked)" />
-        <span class="toggle-track"><span class="toggle-thumb"></span></span>
-        <span class="toggle-text">Voice Agent mode</span>
-      </label>
-
-      <button class="clear-btn" onclick="clearChat()">Clear chat</button>
-    </div>
-
+  <div class="avatar-wrap" id="avatar-wrap">
+    <div class="halo"></div>
+    <div class="halo"></div>
+    <div class="avatar" id="avatar">🧳</div>
   </div>
+
+  <div class="status" id="status">Say hello to begin…</div>
+
+  <div class="waveform" id="waveform">
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    <div class="bar"></div><div class="bar"></div>
+  </div>
+
+  <button class="mic-btn" id="mic-btn" onclick="handleMicTap()">🎙️</button>
+  <div class="hint" id="hint">Tap the mic to start the conversation</div>
 </div>
+
+<div class="lang-wrap">
+  <select id="lang-select">
+    <option value="en-IN">English</option>
+    <option value="hi-IN">हिन्दी</option>
+    <option value="bn-IN">বাংলা</option>
+    <option value="gu-IN">ગુજરાતી</option>
+    <option value="kn-IN">ಕನ್ನಡ</option>
+    <option value="ml-IN">മലയാളം</option>
+    <option value="mr-IN">मराठी</option>
+    <option value="od-IN">ଓଡ଼ିଆ</option>
+    <option value="pa-IN">ਪੰਜਾਬੀ</option>
+    <option value="ta-IN">தமிழ்</option>
+    <option value="te-IN">తెలుగు</option>
+  </select>
+</div>
+
+<button class="end-btn" onclick="endConversation()">End conversation</button>
 
 <div id="toast"></div>
 
 <script>
-  // ── Configuration ──────────────────────────────────────────────────────────
-  const SARVAM_BASE = 'https://api.sarvam.ai';
-  const STT_ENDPOINT = `${SARVAM_BASE}/speech-to-text`;
-  const TTS_ENDPOINT = `${SARVAM_BASE}/text-to-speech`;
-  const CHAT_ENDPOINT = `${SARVAM_BASE}/v1/chat/completions`;
+  // ── Configuration ──
+  const API_BASE = 'https://api.sarvam.ai';
+  const STT_ENDPOINT = `${API_BASE}/speech-to-text`;
+  const TTS_ENDPOINT = `${API_BASE}/text-to-speech`;
+  const CHAT_ENDPOINT = `${API_BASE}/v1/chat/completions`;
+
+  const SYSTEM_PROMPT = `You are Jimi, a warm, friendly and knowledgeable travel agent having a real-time voice conversation.
+
+INTENT HANDLING — Categorise every user turn into one of these travel intents, then respond appropriately:
+  1. DESTINATION_DISCOVERY — suggesting places to visit (by interest, season, budget, vibe).
+  2. ITINERARY_PLANNING — day-by-day plans, duration advice, what-to-do lists.
+  3. FLIGHTS — routes, airlines, rough timing, booking guidance.
+  4. HOTELS_STAY — accommodation types, neighbourhoods, rough price ranges.
+  5. VISA_DOCS — visa rules, passport validity, entry requirements.
+  6. LOCAL_TIPS — food, culture, safety, transport, weather, currency, language basics.
+  7. BUDGETING — rough cost estimates, ways to save.
+  8. SMALL_TALK — greetings, thanks, confirmations, pleasantries.
+  9. OFF_TOPIC — anything unrelated to travel.
+
+FALLBACK & UNCERTAINTY:
+  • If the user's intent is unclear or ambiguous → ask ONE short clarifying question (e.g. "Are you thinking beach, mountains, or city?").
+  • If you don't know a specific fact (exact price, current schedule, live availability) → say so honestly in one line and offer a useful general guideline instead. Never invent numbers.
+  • If the request is OFF_TOPIC → politely steer back: "I'm best with travel — want me to suggest a trip instead?"
+  • If audio/transcript seems garbled or empty → ask them to repeat.
+
+STYLE RULES (voice-first):
+  • Reply in the SAME language the user spoke in. Never mix languages.
+  • 1 to 2 short sentences maximum. This is spoken, not read.
+  • No markdown, no bullet points, no lists, no emojis, no headings.
+  • Sound warm and conversational — like a friend who travels a lot.
+  • Remember earlier context in the conversation and build on it.
+  • Never output reasoning, meta commentary, or thinking text.`;
 
   let API_KEY = localStorage.getItem('sarvam_api_key') || '';
   let mediaRecorder = null;
   let audioChunks = [];
-  let isRecording = false;
-  let isProcessing = false;
-  let autoListen = false;
-  let conversationHistory = [
-    {
-      role: 'system',
-      content: 'You are a concise voice assistant. CRITICAL RULES: (1) Reply ONLY in the same language the user spoke in — never mix languages. (2) Keep every reply to 2 sentences maximum — short answers suit voice. (3) Never include any markdown, bullet points, or formatting. (4) Never output reasoning or thinking text.'
-    }
-  ];
+  let state = 'idle'; // idle | listening | thinking | speaking
+  let conversationStarted = false;
+  let currentAudio = null;
+  let conversationHistory = [{ role: 'system', content: SYSTEM_PROMPT }];
 
-  // ── Init ───────────────────────────────────────────────────────────────────
+  // ── Init ──
   window.addEventListener('load', () => {
     if (API_KEY) {
       document.getElementById('api-key-input').value = '••••••••••••';
@@ -450,44 +399,54 @@
     API_KEY = input;
     localStorage.setItem('sarvam_api_key', API_KEY);
     hideBanner();
-    showToast('API key saved! ✅', 'success');
   }
 
   function hideBanner() {
-    const banner = document.getElementById('api-key-banner');
-    banner.style.display = 'none';
-    document.querySelector('.dialog-wrapper').style.marginTop = '16px';
+    document.getElementById('api-key-banner').style.display = 'none';
   }
 
-  function toggleAutoListen(enabled) {
-    autoListen = enabled;
-    const label = document.getElementById('mic-label');
-    if (enabled) {
-      label.textContent = 'Voice Agent active — tap mic to start';
-      showToast('Voice Agent mode ON — bot will auto-listen after speaking', 'success');
+  // ── Main entry point ──
+  async function handleMicTap() {
+    if (!API_KEY) { showToast('Please enter your API key first.'); return; }
+    if (state === 'thinking') return;
+
+    if (state === 'speaking') {
+      // User wants to interrupt Jimi and speak
+      stopCurrentAudio();
+      await beginListening();
+      return;
+    }
+
+    if (state === 'listening') {
+      stopListening();
+      return;
+    }
+
+    // idle
+    if (!conversationStarted) {
+      conversationStarted = true;
+      await playGreeting();
     } else {
-      label.textContent = 'Tap to speak';
+      await beginListening();
     }
   }
 
-  // ── Recording ──────────────────────────────────────────────────────────────
-  async function toggleRecording() {
-    if (isProcessing) return;
-    if (!API_KEY) { showToast('Please enter your Sarvam AI API key first.'); return; }
-
-    if (isRecording) {
-      stopRecording();
-    } else {
-      await startRecording();
-    }
+  // ── Greeting (auto-spoken by Jimi on first tap) ──
+  async function playGreeting() {
+    const greeting = "Hi, I'm Jimi, your travel agent. Let me know how can I help you?";
+    conversationHistory.push({ role: 'assistant', content: greeting });
+    setState('speaking', 'Jimi is greeting you…');
+    await speak(greeting);
+    // After greeting → auto-listen
+    await beginListening();
   }
 
-  async function startRecording() {
+  // ── Listening ──
+  async function beginListening() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunks = [];
 
-      // Prefer webm/opus; fall back to whatever the browser supports
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
         : MediaRecorder.isTypeSupported('audio/webm')
@@ -496,65 +455,71 @@
 
       mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-      mediaRecorder.onstop = () => { stream.getTracks().forEach(t => t.stop()); processAudio(); };
+      mediaRecorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        processTurn();
+      };
       mediaRecorder.start(100);
-
-      isRecording = true;
-      setUIState('recording');
+      setState('listening', 'Listening… speak now');
     } catch (err) {
-      showToast('Microphone access denied. Please allow microphone permissions.');
       console.error(err);
+      showToast('Microphone access denied. Please allow microphone permissions.');
+      setState('idle', 'Tap the mic to try again');
     }
   }
 
-  function stopRecording() {
+  function stopListening() {
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
       mediaRecorder.stop();
     }
-    isRecording = false;
-    setUIState('processing');
+    setState('thinking', 'Jimi is thinking…');
   }
 
-  // ── Audio Processing Pipeline ──────────────────────────────────────────────
-  async function processAudio() {
-    isProcessing = true;
+  // ── One conversation turn: STT → LLM → TTS → auto-listen ──
+  async function processTurn() {
+    setState('thinking', 'Understanding you…');
+
     const mimeType = mediaRecorder.mimeType || 'audio/webm';
-    // Strip codec parameters for MIME type used in file upload (e.g. audio/webm;codecs=opus → audio/webm)
     const baseMime = mimeType.split(';')[0];
     const ext = baseMime.includes('ogg') ? 'ogg' : 'webm';
     const audioBlob = new Blob(audioChunks, { type: baseMime });
 
-    setStatus('Transcribing your speech…');
-    const transcript = await speechToText(audioBlob, ext, baseMime);
-    if (!transcript) { setUIState('idle'); isProcessing = false; return; }
-
-    addMessage('user', transcript);
-    setStatus('Thinking…');
-    showTyping(true);
-
-    const reply = await chatWithLLM(transcript);
-    showTyping(false);
-    if (!reply) { setUIState('idle'); isProcessing = false; return; }
-
-    addMessage('bot', reply);
-    setStatus('Generating voice response…');
-
-    await textToSpeech(reply);
-    isProcessing = false;
-
-    // Voice Agent mode: auto-listen after bot finishes speaking
-    if (autoListen) {
-      await startRecording();
-    } else {
-      setUIState('idle');
+    if (audioBlob.size < 1200) {
+      // Too short — likely silence
+      await fallback("Sorry, I didn't catch that. Could you say it again?");
+      return;
     }
+
+    const transcript = await speechToText(audioBlob, ext, baseMime);
+    if (!transcript || !transcript.trim()) {
+      await fallback("I couldn't hear you clearly. Could you repeat that?");
+      return;
+    }
+
+    setState('thinking', 'Jimi is thinking…');
+    const reply = await chatWithLLM(transcript);
+    if (!reply) {
+      await fallback("I hit a small hiccup on my end. Could you try that again?");
+      return;
+    }
+
+    setState('speaking', 'Jimi is speaking…');
+    await speak(reply);
+
+    // Turn-taking: auto-listen again
+    await beginListening();
   }
 
-  // ── Sarvam STT ─────────────────────────────────────────────────────────────
+  async function fallback(msg) {
+    setState('speaking', 'Jimi is speaking…');
+    await speak(msg);
+    await beginListening();
+  }
+
+  // ── STT ──
   async function speechToText(audioBlob, ext, mimeType) {
     const lang = document.getElementById('lang-select').value;
     const formData = new FormData();
-    // Explicitly set file with correct base MIME type (no codec params)
     formData.append('file', new File([audioBlob], `audio.${ext}`, { type: mimeType }));
     formData.append('language_code', lang);
     formData.append('model', 'saaras:v3');
@@ -568,22 +533,18 @@
       });
       if (!res.ok) {
         const body = await res.text();
-        let msg = res.statusText;
-        try { msg = JSON.parse(body).message || JSON.parse(body).detail || msg; } catch {}
-        console.error('STT error response:', body);
-        showToast(`STT Error ${res.status}: ${msg}`);
+        console.error('STT error:', body);
         return null;
       }
       const data = await res.json();
       return data.transcript || null;
     } catch (err) {
-      showToast('Network error during transcription.');
-      console.error(err);
+      console.error('STT network error:', err);
       return null;
     }
   }
 
-  // ── Sarvam Chat / LLM ──────────────────────────────────────────────────────
+  // ── LLM ──
   async function chatWithLLM(userText) {
     conversationHistory.push({ role: 'user', content: userText });
 
@@ -597,36 +558,32 @@
         body: JSON.stringify({
           model: 'sarvam-m',
           messages: conversationHistory,
-          max_tokens: 200,
+          max_tokens: 180,
           temperature: 0.7
         })
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        showToast(`Chat Error: ${err.message || res.statusText}`);
         conversationHistory.pop();
         return null;
       }
 
       const data = await res.json();
       const raw = data.choices?.[0]?.message?.content || '';
-      // Strip <think>...</think> reasoning blocks that sarvam-m emits
       const reply = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim() || null;
       if (reply) conversationHistory.push({ role: 'assistant', content: reply });
+      else conversationHistory.pop();
       return reply;
     } catch (err) {
-      showToast('Network error during chat.');
-      console.error(err);
+      console.error('Chat network error:', err);
       conversationHistory.pop();
       return null;
     }
   }
 
-  // ── Sarvam TTS ─────────────────────────────────────────────────────────────
-  async function textToSpeech(text) {
+  // ── TTS + playback ──
+  async function speak(text) {
     const lang = document.getElementById('lang-select').value;
-
     try {
       const res = await fetch(TTS_ENDPOINT, {
         method: 'POST',
@@ -649,108 +606,98 @@
 
       if (!res.ok) {
         const body = await res.text();
-        let msg = res.statusText;
-        try { msg = JSON.parse(body).message || JSON.parse(body).detail || msg; } catch {}
-        console.error('TTS error response:', body);
-        showToast(`TTS Error ${res.status}: ${msg}`);
+        console.error('TTS error:', body);
         return;
       }
 
       const data = await res.json();
       const base64Audio = data.audios?.[0];
-      if (!base64Audio) { showToast('No audio received from TTS.'); return; }
+      if (!base64Audio) return;
 
       const audioBytes = Uint8Array.from(atob(base64Audio), c => c.charCodeAt(0));
       const audioBlob = new Blob([audioBytes], { type: 'audio/wav' });
       const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      audio.onended = () => URL.revokeObjectURL(audioUrl);
-      await audio.play();
+
+      await new Promise((resolve) => {
+        currentAudio = new Audio(audioUrl);
+        currentAudio.onended = () => { URL.revokeObjectURL(audioUrl); currentAudio = null; resolve(); };
+        currentAudio.onerror = () => { URL.revokeObjectURL(audioUrl); currentAudio = null; resolve(); };
+        currentAudio.play().catch(() => resolve());
+      });
     } catch (err) {
-      showToast('Network error during text-to-speech.');
-      console.error(err);
+      console.error('TTS network error:', err);
     }
   }
 
-  // ── UI Helpers ─────────────────────────────────────────────────────────────
-  function setUIState(state) {
+  function stopCurrentAudio() {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio = null;
+    }
+  }
+
+  // ── UI state ──
+  function setState(next, statusText) {
+    state = next;
     const btn = document.getElementById('mic-btn');
-    const label = document.getElementById('mic-label');
+    const avatarWrap = document.getElementById('avatar-wrap');
+    const avatar = document.getElementById('avatar');
     const waveform = document.getElementById('waveform');
+    const hint = document.getElementById('hint');
 
     btn.className = 'mic-btn';
+    avatarWrap.classList.remove('active');
+    avatar.classList.remove('speaking');
     waveform.classList.remove('active');
 
-    switch (state) {
-      case 'recording':
-        btn.classList.add('recording');
+    switch (next) {
+      case 'listening':
+        btn.classList.add('listening');
         btn.textContent = '⏹️';
-        label.textContent = 'Tap to stop';
+        avatarWrap.classList.add('active');
         waveform.classList.add('active');
-        setStatus('Recording… speak now');
+        hint.textContent = 'Tap to stop';
         break;
-      case 'processing':
-        btn.classList.add('processing');
-        btn.textContent = '⏳';
-        label.textContent = 'Processing…';
-        setStatus('Processing your audio…');
+      case 'thinking':
+        btn.classList.add('thinking');
+        btn.textContent = '⋯';
+        hint.textContent = 'One moment…';
+        break;
+      case 'speaking':
+        btn.classList.add('speaking');
+        btn.textContent = '🔊';
+        avatar.classList.add('speaking');
+        avatarWrap.classList.add('active');
+        hint.textContent = 'Tap to interrupt';
         break;
       default:
         btn.textContent = '🎙️';
-        label.textContent = 'Tap to speak';
-        setStatus('Press the mic to start speaking');
+        hint.textContent = conversationStarted
+          ? 'Tap the mic to speak'
+          : 'Tap the mic to start the conversation';
     }
+    document.getElementById('status').textContent = statusText || '';
   }
 
-  function setStatus(text) {
-    document.getElementById('status-text').textContent = text;
-  }
-
-  function showTyping(visible) {
-    const el = document.getElementById('typing');
-    el.className = visible ? 'typing-indicator visible' : 'typing-indicator';
-    if (visible) scrollMessages();
-  }
-
-  function addMessage(role, text) {
-    const messages = document.getElementById('messages');
-    const typing = document.getElementById('typing');
-
-    const div = document.createElement('div');
-    div.className = `message ${role}`;
-    div.innerHTML = `<div class="speaker">${role === 'bot' ? 'Sarvam Bot' : 'You'}</div>${escapeHtml(text)}`;
-    messages.insertBefore(div, typing);
-    scrollMessages();
-  }
-
-  function scrollMessages() {
-    const el = document.getElementById('messages');
-    el.scrollTop = el.scrollHeight;
-  }
-
-  function clearChat() {
-    const messages = document.getElementById('messages');
-    // Keep only the first welcome message and typing indicator
-    const children = Array.from(messages.children);
-    children.slice(1, -1).forEach(c => c.remove());
-    conversationHistory = [conversationHistory[0]]; // keep system prompt
-  }
-
-  function escapeHtml(text) {
-    return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  function endConversation() {
+    stopCurrentAudio();
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+    conversationStarted = false;
+    conversationHistory = [{ role: 'system', content: SYSTEM_PROMPT }];
+    setState('idle', 'Say hello to begin…');
+    showToast('Conversation ended ✈️', 'success');
   }
 
   let toastTimer = null;
   function showToast(msg, type = 'error') {
     const toast = document.getElementById('toast');
     toast.textContent = msg;
-    toast.style.background = type === 'success' ? '#16a34a' : '#ef4444';
+    toast.style.background = type === 'success' ? '#10b981' : '#ef4444';
     toast.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.remove('show'), 4000);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 3500);
   }
 
-  // Allow pressing Enter on API key input
   document.getElementById('api-key-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') saveApiKey();
   });
